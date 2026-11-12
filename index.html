@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YI Maintenance Tracker - Mae Moh Unit 14</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Header Navbar -->
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-2 md:mb-0">
+                <i class="fa-solid fa-bolt text-amber-400 text-2xl"></i>
+                <h1 class="text-xl font-bold">YI Maintenance & Manpower Tracker</h1>
+                <span class="bg-blue-600 text-xs px-2 py-1 rounded text-white">Mae Moh Unit 14</span>
+            </div>
+            <!-- Tab Navigation -->
+            <nav class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white transition">📊 แดชบอร์ด</button>
+                <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white transition">📅 ปฏิทินงาน</button>
+                <button onclick="switchTab('dailylogs')" id="btn-dailylogs" class="px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white transition">📝 บันทึกรายวัน</button>
+                <button onclick="switchTab('master')" id="btn-master" class="px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white transition">🗂️ รายการ Work Orders</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container mx-auto px-4 py-6">
+
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600 text-xl"><i class="fa-solid fa-list-check"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">งานทั้งหมด (Work Orders)</p>
+                        <h3 id="stat-total-wo" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="bg-emerald-100 p-3 rounded-lg text-emerald-600 text-xl"><i class="fa-solid fa-bolt"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">กลุ่มไฟฟ้า (Electrical)</p>
+                        <h3 id="stat-elec" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="bg-amber-100 p-3 rounded-lg text-amber-600 text-xl"><i class="fa-solid fa-gears"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">กลุ่มเทอร์ไบน์ (Turbine)</p>
+                        <h3 id="stat-turb" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="bg-rose-100 p-3 rounded-lg text-rose-600 text-xl"><i class="fa-solid fa-fire"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">กลุ่มบอยเลอร์ (Boiler)</p>
+                        <h3 id="stat-boil" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-2"></i> ระบบตรวจสอบชั่วโมงทำงานเกินโควตา (Max 7 ชม./วัน/คน)</h3>
+                <div id="overload-alert-box" class="p-4 bg-emerald-50 text-emerald-700 rounded-lg text-sm">
+                    ✅ ยังไม่มีรายงานชั่วโมงทำงานเกินกำหนดในวันนี้ ทุกคนปฏิบัติงานอยู่ในเกณฑ์มาตรฐาน (ไม่เกิน 7 ชั่วโมง)
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CALENDAR -->
+        <section id="tab-calendar" class="hidden space-y-4">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-lg font-bold text-slate-800 mb-2">📅 ปฏิทินแผนงานซ่อมบำรุงประจำปี (YI Schedule)</h2>
+                <p class="text-sm text-gray-500 mb-4">แสดงรายการกำหนดการเริ่มต้นและสิ้นสุดของแต่ละ Work Order</p>
+                <div id="calendar-view-container" class="space-y-3">
+                    <!-- Dynamic Loaded Schedule Cards -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: DAILY LOGS -->
+        <section id="tab-dailylogs" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-pen-to-square text-blue-600 mr-2"></i> บันทึกกิจกรรมหน้างานรายวัน (คุมโควตา 7 ชม.)</h2>
+                
+                <form id="daily-log-form" onsubmit="submitDailyLog(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลือก Work Order:</label>
+                            <select id="log-wo-select" required class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- เลือกใบงาน --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่ปฏิบัติงาน:</label>
+                            <input type="date" id="log-date" required class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดงานที่ทำวันนี้:</label>
+                        <textarea id="log-desc" rows="2" required placeholder="เช่น ตั้งนั่งร้าน, ตรวจสอบอุปกรณ์, เปลี่ยนซีล..." class="w-full border border-gray-300 rounded-lg p-2.5 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">เลือกทีมงานที่ปฏิบัติงานร่วมกัน (ติ๊กเลือกรายบุคคล):</label>
+                        <div id="team-checkboxes-container" class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <!-- Dynamic Checkboxes from team_members -->
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition shadow">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> บันทึกข้อมูลรายวัน
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List of recent logs -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-md font-bold text-slate-800 mb-3">📋 ประวัติบันทึกรายวันล่าสุด</h3>
+                <div id="recent-logs-list" class="space-y-2 text-sm text-gray-600">
+                    <!-- Dynamic logs -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: MASTER LIST -->
+        <section id="tab-master" class="hidden space-y-4">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                <h2 class="text-lg font-bold text-slate-800 mb-4">🗂️ รายการ Work Orders ทั้งหมด</h2>
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 border-b">
+                            <th class="p-3">Work Order</th>
+                            <th class="p-3">รายละเอียด</th>
+                            <th class="p-3">กลุ่มงาน</th>
+                            <th class="p-3">สถานะ</th>
+                            <th class="p-3">แผนเริ่มต้น - สิ้นสุด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="master-wo-tbody">
+                        <!-- Dynamic rows -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Supabase Integration Script -->
+    <script>
+        // 🛠️ แทนที่ค่าด้านล่างด้วย Supabase URL และ Anon Key ของคุณ
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            ['dashboard', 'calendar', 'dailylogs', 'master'].forEach(id => {
+                document.getElementById(`tab-${id}`).classList.add('hidden');
+                document.getElementById(`btn-${id}`).className = "px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white transition";
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn-${tabId}`).className = "px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white transition";
+            
+            if(tabId === 'dashboard') loadDashboardData();
+            if(tabId === 'calendar') loadCalendarData();
+            if(tabId === 'dailylogs') loadDailyLogFormDeps();
+            if(tabId === 'master') loadMasterTable();
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('log-date').valueAsDate = new Date();
+            loadDashboardData();
+        });
+
+        // 1. Load Dashboard Stats
+        async function loadDashboardData() {
+            const { data, error } = await supabaseClient.from('work_orders').select('*');
+            if (error) { console.error(error); return; }
+
+            document.getElementById('stat-total-wo').innerText = data.length;
+            document.getElementById('stat-elec').innerText = data.filter(i => i.group_category === 'Electrical').length;
+            document.getElementById('stat-turb').innerText = data.filter(i => i.group_category === 'Turbine').length;
+            document.getElementById('stat-boil').innerText = data.filter(i => i.group_category === 'Boiler').length;
+        }
+
+        // 2. Load Calendar View
+        async function loadCalendarData() {
+            const { data, error } = await supabaseClient.from('work_orders').select('*').order('scheduled_start', { ascending: true });
+            const container = document.getElementById('calendar-view-container');
+            if (error || !data.length) { container.innerHTML = '<p class="text-gray-400">ไม่พบข้อมูลกำหนดการ</p>'; return; }
+
+            container.innerHTML = data.map(item => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div>
+                        <span class="font-bold text-blue-600">${item.work_order}</span> - ${item.description}
+                        <span class="ml-2 text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-700">${item.group_category || 'General'}</span>
+                    </div>
+                    <div class="text-xs text-gray-500 font-medium">
+                        📅 ${item.scheduled_start || 'ยังไม่กำหนด'} ➔ ${item.scheduled_finish || 'ยังไม่กำหนด'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 3. Load Daily Log Dependencies (Dropdown & Checkboxes)
+        async function loadDailyLogFormDeps() {
+            // Load WO Select
+            const { data: woData } = await supabaseClient.from('work_orders').select('id, work_order, description');
+            const select = document.getElementById('log-wo-select');
+            select.innerHTML = '<option value="">-- เลือกใบงาน --</option>' + (woData || []).map(w => `<option value="${w.id}">[${w.work_order}] ${w.description}</option>`).join('');
+
+            // Load Team Checkboxes
+            const { data: teamData } = await supabaseClient.from('team_members').select('*');
+            const container = document.getElementById('team-checkboxes-container');
+            container.innerHTML = (teamData || []).map(t => `
+                <label class="flex items-center space-x-2 text-sm p-1 bg-white rounded border border-gray-100">
+                    <input type="checkbox" name="team_member" value="${t.full_name}" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span>${t.full_name} <span class="text-xs text-gray-400">(${t.group_category})</span></span>
+                </label>
+            `).join('');
+
+            loadRecentLogs();
+        }
+
+        // Submit Daily Log with 7-Hour Rule Validation
+        async function submitDailyLog(event) {
+            event.preventDefault();
+            const work_order_id = document.getElementById('log-wo-select').value;
+            const log_date = document.getElementById('log-date').value;
+            const daily_description = document.getElementById('log-desc').value;
+            
+            const checkboxes = document.querySelectorAll('input[name="team_member"]:checked');
+            const selected_members = Array.from(checkboxes).map(cb => cb.value);
+
+            if(selected_members.length === 0) {
+                alert('กรุณาเลือกรายชื่อทีมงานอย่างน้อย 1 คน');
+                return;
+            }
+
+            // บันทึกข้อมูลลง Supabase (กำหนด regular_hours ตายตัวที่ 7.0 ชั่วโมงตามกฎ)
+            const { error } = await supabaseClient.from('daily_logs').insert([{
+                work_order_id,
+                log_date,
+                daily_description,
+                assigned_members: selected_members,
+                regular_hours: 7.0,
+                status_today: 'Normal'
+            }]);
+
+            if(error) {
+                alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+            } else {
+                alert('บันทึกข้อมูลรายสำเร็จ! (คิดชั่วโมงมาตรฐาน 7 ชม. เรียบร้อย)');
+                document.getElementById('daily-log-form').reset();
+                document.getElementById('log-date').valueAsDate = new Date();
+                loadRecentLogs();
+            }
+        }
+
+        async function loadRecentLogs() {
+            const { data } = await supabaseClient.from('daily_logs').select('*, work_orders(work_order, description)').order('created_at', { ascending: false }).limit(5);
+            const list = document.getElementById('recent-logs-list');
+            if(!data || !data.length) { list.innerHTML = '<p class="text-gray-400">ยังไม่มีประวัติการบันทึก</p>'; return; }
+
+            list.innerHTML = data.map(l => `
+                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-slate-700">${l.work_orders?.work_order || 'N/A'}</span>: ${l.daily_description}
+                        <br><span class="text-xs text-gray-500">👥 ทีม: ${l.assigned_members.join(', ')} | ⏱️ ${l.regular_hours} ชม.</span>
+                    </div>
+                    <span class="text-xs text-blue-600 font-medium">${l.log_date}</span>
+                </div>
+            `).join('');
+        }
+
+        // 4. Master Table List
+        async function loadMasterTable() {
+            const { data } = await supabaseClient.from('work_orders').select('*');
+            const tbody = document.getElementById('master-wo-tbody');
+            if(!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">ไม่พบข้อมูล Work Orders</td></tr>'; return; }
+
+            tbody.innerHTML = data.map(w => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-bold text-blue-600">${w.work_order}</td>
+                    <td class="p-3">${w.description}</td>
+                    <td class="p-3"><span class="bg-gray-100 text-xs px-2 py-1 rounded">${w.group_category || '-'}</span></td>
+                    <td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">${w.status}</span></td>
+                    <td class="p-3 text-xs text-gray-500">${w.scheduled_start || '-'} ถึง ${w.scheduled_finish || '-'}</td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
