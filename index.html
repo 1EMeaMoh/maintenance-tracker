@@ -81,10 +81,59 @@
         <!-- TAB 2: CALENDAR -->
         <section id="tab-calendar" class="hidden space-y-4">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h2 class="text-lg font-bold text-slate-800 mb-2">📅 ปฏิทินแผนงานซ่อมบำรุงประจำปี (YI Schedule)</h2>
-                <p class="text-sm text-gray-500 mb-4">แสดงรายการกำหนดการเริ่มต้นและสิ้นสุดของแต่ละ Work Order</p>
-                <div id="calendar-view-container" class="space-y-3">
-                    <!-- Dynamic Loaded Schedule Cards -->
+                <!-- ส่วนควบคุมเดือน/ปี และปุ่มเลื่อน -->
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <div>
+                        <h2 id="cal-month-year-title" class="text-2xl font-bold text-slate-800 uppercase tracking-wide">NOVEMBER 2026</h2>
+                        <p class="text-sm text-gray-500">แสดงแผนงานซ่อมบำรุงลากยาวตามช่วงเวลา (Scheduled Start - Finish)</p>
+                    </div>
+                    <div class="flex items-center space-x-2 mt-3 md:mt-0">
+                        <button onclick="changeMonth(-1)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><i class="fa-solid fa-chevron-left"></i> เดือนก่อนหน้า</button>
+                        <button onclick="changeMonth(1)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">เดือนถัดไป <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Layout หลัก: ตารางปฏิทิน (ซ้าย) + Notes (ขวา) -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    
+                    <!-- ตาราง Grid ปฏิทิน (กินพื้นที่ 3 คอลัมน์) -->
+                    <div class="lg:col-span-3 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        <!-- หัวตาราง: วันในสัปดาห์ -->
+                        <div class="grid grid-cols-7 bg-pink-100 text-center font-bold text-xs text-slate-700 py-2.5 border-b border-gray-200">
+                            <div class="text-red-600">SUNDAY</div>
+                            <div>MONDAY</div>
+                            <div>TUESDAY</div>
+                            <div>WEDNESDAY</div>
+                            <div>THURSDAY</div>
+                            <div>FRIDAY</div>
+                            <div class="text-red-600">SATURDAY</div>
+                        </div>
+                        <!-- ช่องตารางวันในเดือน (Dynamic Grid) -->
+                        <div id="calendar-grid-cells" class="grid grid-cols-7 auto-rows-fr bg-gray-200 gap-[1px]">
+                            <!-- Javascript จะเติมช่องวันที่และแถบสีงานตรงนี้ -->
+                        </div>
+                    </div>
+
+                    <!-- ช่อง NOTES ด้านข้าง -->
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 flex flex-col shadow-sm">
+                        <h3 class="font-bold text-slate-800 tracking-wider text-center border-b border-gray-200 pb-2 mb-3">NOTES</h3>
+                        <div class="space-y-4 flex-1 text-sm text-gray-400">
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                            <div class="border-b border-dashed border-gray-300 pb-2"></div>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg space-y-1">
+                            <p class="font-bold text-slate-700 mb-1">🏷️ สัญลักษณ์สีแถบงาน:</p>
+                            <p class="flex items-center"><span class="w-3 h-3 bg-emerald-500 rounded-full inline-block mr-2"></span> วันปกติ (จันทร์-ศุกร์)</p>
+                            <p class="flex items-center"><span class="w-3 h-3 bg-red-500 rounded-full inline-block mr-2"></span> วันหยุดเสาร์-อาทิตย์</p>
+                            <p class="flex items-center"><span class="w-3 h-3 bg-amber-500 rounded-full inline-block mr-2"></span> วันหยุดนักขัตฤกษ์</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </section>
@@ -159,7 +208,7 @@
 
     <!-- Supabase Integration Script -->
     <script>
-        // 🛠️ แทนที่ค่าด้านล่างด้วย Supabase URL และ Anon Key ของคุณ
+        // Supabase Configuration
         const SUPABASE_URL = 'https://kdeasvfpcvqkngxusisu.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_gabBxwfx4ue5mq_vIMmIcg_kKmd9j37';
         
@@ -175,7 +224,7 @@
             document.getElementById(`btn-${tabId}`).className = "px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white transition";
             
             if(tabId === 'dashboard') loadDashboardData();
-            if(tabId === 'calendar') loadCalendarData();
+            if(tabId === 'calendar') loadCalendarGridView(); // เรียกใช้ปฏิทิน Grid แบบแถบสี
             if(tabId === 'dailylogs') loadDailyLogFormDeps();
             if(tabId === 'master') loadMasterTable();
         }
@@ -197,33 +246,97 @@
             document.getElementById('stat-boil').innerText = data.filter(i => i.group_category === 'Boiler').length;
         }
 
-        // 2. Load Calendar View
-        async function loadCalendarData() {
-            const { data, error } = await supabaseClient.from('work_orders').select('*').order('scheduled_start', { ascending: true });
-            const container = document.getElementById('calendar-view-container');
-            if (error || !data.length) { container.innerHTML = '<p class="text-gray-400">ไม่พบข้อมูลกำหนดการ</p>'; return; }
+        // 2. Calendar Grid View with Project Span Bars
+        let currentCalDate = new Date(2026, 10, 1); // เริ่มต้น พฤศจิกายน 2026
 
-            container.innerHTML = data.map(item => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <div>
-                        <span class="font-bold text-blue-600">${item.work_order}</span> - ${item.description}
-                        <span class="ml-2 text-xs bg-slate-200 px-2 py-0.5 rounded text-slate-700">${item.group_category || 'General'}</span>
+        function changeMonth(direction) {
+            currentCalDate.setMonth(currentCalDate.getMonth() + direction);
+            loadCalendarGridView();
+        }
+
+        async function loadCalendarGridView() {
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth(); // 0-11
+            
+            const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+            document.getElementById('cal-month-year-title').innerText = `${monthNames[month]} ${year}`;
+
+            const { data: workOrders, error } = await supabaseClient.from('work_orders').select('*');
+            if (error) { console.error(error); return; }
+
+            const firstDayIndex = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const gridContainer = document.getElementById('calendar-grid-cells');
+            gridContainer.innerHTML = '';
+
+            // ช่องว่างเดือนก่อนหน้า
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "bg-gray-50 min-h-[100px] p-2 opacity-40";
+                gridContainer.appendChild(emptyCell);
+            }
+
+            // วนลูปวันในเดือน
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayOfWeek = new Date(year, month, day).getDay();
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+                const cell = document.createElement('div');
+                let cellBg = isWeekend ? 'bg-red-50/60' : 'bg-white';
+                cell.className = `${cellBg} min-h-[110px] p-2 flex flex-col justify-between relative transition hover:bg-slate-50`;
+
+                const dayNumberHtml = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-gray-400">${currentDateStr.split('-')[1]}/${currentDateStr.split('-')[2]}</span>
+                        <span class="text-sm font-bold ${isWeekend ? 'text-red-600' : 'text-slate-700'}">${day}</span>
                     </div>
-                    <div class="text-xs text-gray-500 font-medium">
-                        📅 ${item.scheduled_start || 'ยังไม่กำหนด'} ➔ ${item.scheduled_finish || 'ยังไม่กำหนด'}
-                    </div>
-                </div>
-            `).join('');
+                `;
+                cell.innerHTML = dayNumberHtml;
+
+                // กรอง Work Orders ที่คร่อมช่วงเวลานี้
+                const matchedWos = (workOrders || []).filter(wo => {
+                    if (!wo.scheduled_start || !wo.scheduled_finish) return false;
+                    return currentDateStr >= wo.scheduled_start && currentDateStr <= wo.scheduled_finish;
+                });
+
+                const barsContainer = document.createElement('div');
+                barsContainer.className = "space-y-1 overflow-y-auto max-h-[75px]";
+
+                matchedWos.forEach(wo => {
+                    const bar = document.createElement('div');
+                    let barColor = 'bg-emerald-600 text-white'; // ปกติสีเขียว
+                    if (isWeekend) barColor = 'bg-red-500 text-white'; // วันหยุดสีแดง
+                    if (wo.group_category === 'Boiler') barColor = 'bg-amber-600 text-white';
+                    if (wo.group_category === 'Turbine') barColor = 'bg-blue-600 text-white';
+
+                    bar.className = `${barColor} text-[10px] px-1.5 py-0.5 rounded truncate font-medium shadow-sm`;
+                    bar.title = `[${wo.work_order}] ${wo.description} (${wo.scheduled_start} ถึง ${wo.scheduled_finish})`;
+                    bar.innerText = `${wo.work_order}: ${wo.description}`;
+                    barsContainer.appendChild(bar);
+                });
+
+                cell.appendChild(barsContainer);
+                gridContainer.appendChild(cell);
+            }
+
+            // ช่องว่างเติมให้เต็มตาราง
+            const totalCellsRendered = firstDayIndex + totalDaysInMonth;
+            const remainingCells = (totalCellsRendered % 7 === 0) ? 0 : 7 - (totalCellsRendered % 7);
+            for (let i = 0; i < remainingCells; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "bg-gray-50 min-h-[100px] p-2 opacity-40";
+                gridContainer.appendChild(emptyCell);
+            }
         }
 
         // 3. Load Daily Log Dependencies (Dropdown & Checkboxes)
         async function loadDailyLogFormDeps() {
-            // Load WO Select
             const { data: woData } = await supabaseClient.from('work_orders').select('id, work_order, description');
             const select = document.getElementById('log-wo-select');
             select.innerHTML = '<option value="">-- เลือกใบงาน --</option>' + (woData || []).map(w => `<option value="${w.id}">[${w.work_order}] ${w.description}</option>`).join('');
 
-            // Load Team Checkboxes
             const { data: teamData } = await supabaseClient.from('team_members').select('*');
             const container = document.getElementById('team-checkboxes-container');
             container.innerHTML = (teamData || []).map(t => `
@@ -251,7 +364,6 @@
                 return;
             }
 
-            // บันทึกข้อมูลลง Supabase (กำหนด regular_hours ตายตัวที่ 7.0 ชั่วโมงตามกฎ)
             const { error } = await supabaseClient.from('daily_logs').insert([{
                 work_order_id,
                 log_date,
@@ -264,7 +376,7 @@
             if(error) {
                 alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
             } else {
-                alert('บันทึกข้อมูลรายสำเร็จ! (คิดชั่วโมงมาตรฐาน 7 ชม. เรียบร้อย)');
+                alert('บันทึกข้อมูลรายวันสำเร็จ! (คุมชั่วโมงมาตรฐาน 7 ชม. เรียบร้อย)');
                 document.getElementById('daily-log-form').reset();
                 document.getElementById('log-date').valueAsDate = new Date();
                 loadRecentLogs();
